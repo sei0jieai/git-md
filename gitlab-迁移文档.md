@@ -208,3 +208,235 @@ To https://root@git.xiaopankeji.com/root/dev-ops-docker-backup.git
 
 
 
+
+
+#添加定时任务，进行定时备份，以及删除七天以前的备份
+
+三种方式：
+
+1. 宿主机，
+2. 创建单独cron容器https://hub.docker.com/r/willfarrell/crontab，未试验
+3. 容器内
+
+###### 添加脚本，放在容器内的/var/opt/gitlab/myshell/gitlab_bak.sh,容器需要创建一个日志文件夹/var/log/gitlab/myshell/，日志放在/var/log/gitlab/myshell/logs，
+
+``````
+#!/bin/bash
+
+Shell_Name=gitlab_bak.sh
+Log_Path=/var/log/gitlab/myshell/logs
+Log_File=${Log_Path}/${Shell_Name}.log
+Gitbak_Path=/var/opt/gitlab/backups
+
+function Shell_log()
+{
+    echo "$(date +"%Y-%m-%d") $(date +"%H:%M:%S") ${Shell_Name} $1" >> ${Log_File}
+}
+
+function Main(){
+    if [ ! -d ${Log_Path} ];then
+        mkdir -p ${Log_Path}
+    fi
+    Shell_log "Shell start..."
+
+    /usr/bin/gitlab-rake gitlab:backup:create
+    if [ $? -eq 0 ];then
+        Shell_log "gitlab-rake execute success."
+    else
+        Shell_log "gitlab-rake execute error"
+    fi
+
+    find ${Gitbak_Path} -name "*gitlab_backup.tar" -mtime +7 -delete
+
+}
+
+Main;
+``````
+
+#添加定时任务，crontab -e
+
+
+
+`30 00 * * * sh /var/opt/gitlab/myshell/gitlab_back.sh`
+
+#### 一，宿主机上实行定时任务
+
+**注意：docker命令不需要加**`-it`**，因为加**`-it`**就要开启了一个终端，而计划任务是无法进入任何终端。**
+
+```
+#添加定时任务
+crontab -e 
+30 00 * * * docker exec gitlab /bin/bash /var/opt/gitlab/myshell/gitlab_bak.sh
+
+
+# 手动执行情况
+[root@disp-parent backups]# docker exec -it gitlab /bin/bash /var/opt/gitlab/myshell/gitlab_bak.sh
+Dumping database ... 
+Dumping PostgreSQL database gitlabhq_production ... [DONE]
+done
+Dumping repositories ...
+ * java/VRBP_Admin ... [DONE]
+ * woasis-java/VRBP_Web ... [DONE]
+ * woasis-java/vrbp-charging ... [DONE]
+ * woasis-java/vrbp-vrbs ... [DONE]
+ * woasis-java/woasis_vrbp_mpush ... [DONE]
+ * woasis-java/woasis-vrbp-hisds ... [DONE]
+ * woasis-java/woasis-vrbp-synchro ... [DONE]
+ * woasis-java/vrbp-schedule-tasktracker ... [DONE]
+ * woasis-java/VRBP_Common ... [DONE]
+ * woasis-java/uap-open ... [DONE]
+ * woasis-java/VRBP-Api ... [DONE]
+ * woasis-java/VRBP_Admin ... [DONE]
+ * teamwork/woasis-project-notes ... [DONE]
+ * ops/nodejs-test ... [DONE]
+ * woasis-android/WoasisPandAuto ... [DONE]
+ * woasis-ios/WoasisPandAuto ... [DONE]
+ * java/xp-vehicle-network ... [DONE]
+ * ops/pd_shell ... [DONE]
+ * ops/keys ... [SKIPPED]
+ * java/xp-member ... [DONE]
+ * java/xp-cms ... [DONE]
+ * java/verification-code-service ... [DONE]
+ * wangwei/baidu-summit-api ... [DONE]
+ * java/xp-h5-api ... [DONE]
+ * java/xp-coupon-service ... [DONE]
+ * java/xp-coupon-service.wiki ...  [SKIPPED]
+ * java/xp-payment ... [DONE]
+ * java/xp-open-api ... [DONE]
+ * java/xp-illegal ... [DONE]
+ * huangyu/duola-parent ... [DONE]
+ * huangyu/duola-parent.wiki ...  [DONE]
+ * huangyu/schedule-parent ... [DONE]
+ * java/xp-extend ... [DONE]
+ * ops/admin ... [DONE]
+ * java/xp-auto-drive ... [DONE]
+ * java/xp-activity-h5 ... [DONE]
+ * java/lz-simulator ... [DONE]
+ * architecture/duola-transaction ... [DONE]
+ * architecture/duola-transaction.wiki ...  [DONE]
+ * iot/panda-mqtt-broker ... [DONE]
+ * iot/moquette ... [DONE]
+ * iot/mqttwk ... [DONE]
+ * iot/mqtt-client ... [DONE]
+ * dispatch-java/xp-dispatcher-parent ... [DONE]
+ * dispatch-java/xp-dispatcher-parent.wiki ...  [SKIPPED]
+ * dispatch-web/xp-dispatcher-admin-h5 ... [DONE]
+ * rentcar-web/xp-common-h5 ... [DONE]
+ * rentcar-ios/rentcar-ios ... [DONE]
+ * zhangmin/rentcar-android ... [SKIPPED]
+ * dispatch-ios/Work ... [DONE]
+ * dispatch-java/xp-dispatcher-api ... [DONE]
+ * dispatch-android/Work ... [DONE]
+ * rentcar-ios/PandAuto-iOS ... [DONE]
+ * rentcar-web/xp-wap2.0-h5 ... [DONE]
+ * rentcar-web/xp-wechat-MiniProgram ... [DONE]
+ * dispatch-ios/Dispatcher ... [DONE]
+ * rentcar-web/xp-alipay-MiniProgram ... [DONE]
+ * rentcar-web/xp-activity ... [DONE]
+ * dispatch-ios/Dispatcher-Swift ... [DONE]
+ * rentcar-web/xp-qiyu-customer ... [DONE]
+ * rentcar-android/PandAuto-Android ... [DONE]
+ * rentcar-web/xp-demandManagement-h5 ... [DONE]
+ * dispatch-android/Dispatcher ... [DONE]
+ * dispatch-java/xp-dispatcher-admin ... [DONE]
+ * dispatch-java/xp-dispatcher-oracle-rmi ... [DONE]
+ * dispatch-web/xp-dispatch-h5 ... [DONE]
+ * rentcar-web/Pd-web ... [DONE]
+ * java/cat-xpand ... [DONE]
+ * java/xp-miniProgram-api ... [DONE]
+ * dispatch-web/appH5 ... [SKIPPED]
+ * rentcar-web/xp-app-h5 ... [DONE]
+ * huangyu/schedule-activiti-web ... [DONE]
+ * java/xp-identifyCarDamage ... [DONE]
+ * iot/nimble-form ... [DONE]
+ * iot/wechat-mini-control ... [DONE]
+ * iot/pd-iov-platform ... [DONE]
+ * iot/panda-login_3_19 ... [DONE]
+ * iot/panda-platform_3_19 ... [DONE]
+ * iot/panda-login_3_20 ... [DONE]
+ * iot/panda-platform_3_20 ... [DONE]
+ * iot/panda-platform_4_11 ... [DONE]
+ * iot/panda-platform ... [DONE]
+ * iot/panda-login ... [DONE]
+ * woasis-java/xpand-rmi-starter ... [DONE]
+ * liubo/xp-dispatcher-workflow-bpmn ... [DONE]
+ * dispatch-java/xp-common-utils ... [DONE]
+ * java/xp-job ... [DONE]
+ * java/xp-sms-api ... [DONE]
+ * root/dev-ops-docker-backup ... [DONE]
+done
+Dumping uploads ... 
+done
+Dumping builds ... 
+done
+Dumping artifacts ... 
+done
+Dumping pages ... 
+done
+Dumping lfs objects ... 
+done
+Dumping container registry images ... 
+[DISABLED]
+Creating backup archive: 1589080880_2020_05_10_gitlab_backup.tar ... done
+Uploading backup archive to remote storage  ... skipped
+Deleting tmp directories ... done
+done
+done
+done
+done
+done
+done
+done
+Deleting old backups ... skipping
+
+# 查看备份文件
+[root@disp-parent backups]# ls /data/gitlab/opt/backups/
+1588946908_2020_05_08_gitlab_backup.tar  1589080880_2020_05_10_gitlab_backup.tar
+```
+
+##### 三 docker内cron（不推荐，这里只给思路，原因：1需要更高权限--private，给与docker容器更多的权限包括对系统时间的修改等，不安全，2，复杂，需要修改系统内文件，导致镜像系统冗余）
+
+#添加阿里云源
+
+```
+#查看系统版本
+root@0f4c4f917148:/etc/default# cat /etc/issue
+Ubuntu 16.04.6 LTS \n \l
+#备份源source文件
+sudo cp /etc/apt/sources.list /etc/apt/sources.list.bak
+#修改source为阿里云源
+root@0f4c4f917148:/etc/default# cat /etc/apt/sources.list
+deb-src http://archive.ubuntu.com/ubuntu xenial main restricted #Added by software-properties
+deb http://mirrors.aliyun.com/ubuntu/ xenial main restricted
+deb-src http://mirrors.aliyun.com/ubuntu/ xenial main restricted multiverse universe #Added by software-properties
+deb http://mirrors.aliyun.com/ubuntu/ xenial-updates main restricted
+deb-src http://mirrors.aliyun.com/ubuntu/ xenial-updates main restricted multiverse universe #Added by software-properties
+deb http://mirrors.aliyun.com/ubuntu/ xenial universe
+deb http://mirrors.aliyun.com/ubuntu/ xenial-updates universe
+deb http://mirrors.aliyun.com/ubuntu/ xenial multiverse
+deb http://mirrors.aliyun.com/ubuntu/ xenial-updates multiverse
+deb http://mirrors.aliyun.com/ubuntu/ xenial-backports main restricted universe multiverse
+deb-src http://mirrors.aliyun.com/ubuntu/ xenial-backports main restricted universe multiverse #Added by software-properties
+deb http://archive.canonical.com/ubuntu xenial partner
+deb-src http://archive.canonical.com/ubuntu xenial partner
+deb http://mirrors.aliyun.com/ubuntu/ xenial-security main restricted
+deb-src http://mirrors.aliyun.com/ubuntu/ xenial-security main restricted multiverse universe #Added by software-properties
+deb http://mirrors.aliyun.com/ubuntu/ xenial-security universe
+deb http://mirrors.aliyun.com/ubuntu/ xenial-security multiverse
+# 更新source文件
+apt-get update
+apt-get upgrade
+#安装cron
+apt-get install cron
+#第一次使用crontab会选择编辑器，选择2,使用vim，1是nano编辑器，我不太会用。
+#添加 定时脚本信息
+*/20 * * * * /sbin/ntpdate pool.ntp.org > /dev/null 2>&1
+30 00 * * * sh /var/opt/gitlab/myshell/gitlab_back.sh
+```
+
+
+
+
+
+
+
